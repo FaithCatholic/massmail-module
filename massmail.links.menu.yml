@@ -1,0 +1,12 @@
+massmail.settings:
+  title: 'MassMail'
+  description: 'Configure MassMail settings.'
+  route_name: massmail.settings
+  parent: system.admin_config_system
+
+massmail.mail:
+  title: 'Send MassMail'
+  description: 'Send a mass email using a source data file from MassTimes.org.'
+  route_name: massmail.mail
+  parent: massmail.settings
+  weight: 100

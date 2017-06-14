@@ -1,0 +1,48 @@
+massmail.settings:
+  type: config_object
+  label: 'MassMail settings'
+  mapping:
+    aws_access:
+      type: string
+      label: 'AWS access key'
+    aws_secret:
+      type: string
+      label: 'AWS secret key'
+    aws_region:
+      type: string
+      label: 'AWS region'
+    data_dir:
+      type: string
+      label: 'Data directory'
+
+massmail.mail:
+  type: config_object
+  label: 'MassMail mail'
+  mapping:
+    to:
+      type: email
+      label: 'Recipient address of the email'
+    from:
+      type: email
+      label: 'Sender address of the email'
+    subject:
+      type: string
+      label: 'Subject of email'
+    body:
+      type: text
+      label: 'Body text of the email'
+    source_fid_0:
+      type: string
+      label: 'Primary source file id'
+    source_fid_1:
+      type: string
+      label: 'Secondary source file id'
+    reply:
+      type: string
+      label: 'Reply address'
+    bounce:
+      type: string
+      label: 'Bounce address'
+    suppressionlist:
+      type: string
+      label: 'Unsubscribe address'

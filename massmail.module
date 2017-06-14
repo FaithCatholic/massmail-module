@@ -1,0 +1,83 @@
+<?php
+
+use Aws\Ses\SesClient;
+use Drupal\file\Entity\File;
+
+/**
+ * Full system path to data directory.
+ * @return string
+ */
+function massmail_data_dir() {
+  $scheme = \Drupal::config('system.file')->get('default_scheme');
+  $uploads_dir = \Drupal::service('file_system')->realpath($scheme . '://');
+  $data_dir = \Drupal::config('massmail.settings')->get('data_dir');
+  return $uploads_dir . '/' . $data_dir;
+}
+
+/**
+ * Full system path to a file using its fid.
+ * @param  integer $fid
+ * @return string
+ */
+function massmail_path_by_fid($fid) {
+  $file = File::load($fid);
+  $filepath = massmail_data_dir() . '/' . $file->getFilename();
+  return $filepath;
+}
+
+/**
+ * Check last line of logfile to see if completed.
+ * @return boolean
+ */
+function massmail_send_is_complete() {
+  $logpath = massmail_data_dir() . '/massmail.log';
+
+  if (file_exists($logpath)) {
+    $line = `tail -n 1 $logpath`;
+
+    if ($line === 'Complete.') {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+ * Return an authorized Amazon SES client.
+ * @return SesClient
+ */
+function massmail_ses_client() {
+  return SesClient::factory([
+    'key' => \Drupal::config('massmail.settings')->get('aws_access'),
+    'secret' => \Drupal::config('massmail.settings')->get('aws_secret'),
+    'region'  => \Drupal::config('massmail.settings')->get('aws_region'),
+  ]);
+}
+
+/**
+ * Return source data csv file.
+ * @param  string $filepath
+ * @param  string $sheetname
+ * @return array
+ */
+function massmail_source_data($filepath, $sheetname) {
+  if ($file = file($filepath)) {
+
+    foreach ($file as $line) {
+      $data[] = str_getcsv($line);
+    }
+
+    if (count($data)) {
+      $headings = array_shift($data);
+
+      // Column names as array keys.
+      array_walk($data, function (&$row) use ($headings) {
+        $row = @array_combine($headings, $row);
+      });
+
+      return $data;
+    }
+
+  }
+}

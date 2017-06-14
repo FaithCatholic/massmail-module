@@ -1,0 +1,7 @@
+name: MassMail
+type: module
+description: Imports, parses, and sends mass mails from a custom CSV source.
+core: 8.x
+package: Custom
+dependencies:
+  - file

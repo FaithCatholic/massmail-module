@@ -1,0 +1,23 @@
+massmail.settings:
+  path: '/admin/config/system/massmail'
+  defaults:
+    _form: '\Drupal\massmail\Form\Settings'
+    _title: 'Configure MassMail'
+  requirements:
+    _permission: 'administer site configuration'
+
+massmail.mail:
+  path: '/massmail/send'
+  defaults:
+    _form: '\Drupal\massmail\Form\Mail'
+    _title: 'Send MassMail'
+  requirements:
+    _permission: 'access massmail mail form'
+
+massmail.status:
+  path: '/massmail/status'
+  defaults:
+    _controller: '\Drupal\massmail\Controller\Status::page'
+    _title: 'MassMail Status'
+  requirements:
+    _permission: 'access massmail mail form'

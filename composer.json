@@ -1,0 +1,16 @@
+{
+  "name": "drupal/massmail",
+  "type": "drupal-module",
+  "description": "Imports, parses, and sends mass mails from a custom CSV source.",
+  "keywords": ["Drupal"],
+  "license": "GPL-2.0+",
+  "homepage": "https://www.drupal.org/project/massmail",
+  "minimum-stability": "dev",
+  "support": {
+    "issues": "https://www.drupal.org/project/issues/massmail",
+    "source": "http://cgit.drupalcode.org/massmail"
+  },
+  "require": {
+    "aws/aws-sdk-php": "~2.0"
+  }
+}
