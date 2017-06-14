@@ -138,8 +138,10 @@ class Mail extends ConfigFormBase {
 
     if ($fid = $config->get('source_fid_0')) {
       $file = File::load($fid);
-      $form['source_fid_0']['#description'] = t('Uploaded data file:') . ' <a href="'. file_create_url($file->getFileUri()) .'">'. $file->getFileUri() .'</a>';
-      $form['source_fid_0']['#required'] = FALSE;
+      if ($file) {
+        $form['source_fid_0']['#description'] = t('Uploaded data file:') . ' <a href="'. file_create_url($file->getFileUri()) .'">'. $file->getFileUri() .'</a>';
+        $form['source_fid_0']['#required'] = FALSE;
+      }
     }
 
     $form['source_fid_1'] = array(
@@ -155,8 +157,10 @@ class Mail extends ConfigFormBase {
 
     if ($fid = $config->get('source_fid_1')) {
       $file = File::load($fid);
-      $form['source_fid_1']['#description'] = t('Uploaded data file:') . ' <a href="'. file_create_url($file->getFileUri()) .'">'. $file->getFileUri() .'</a>';
-      $form['source_fid_1']['#required'] = FALSE;
+      if ($file) {
+        $form['source_fid_1']['#description'] = t('Uploaded data file:') . ' <a href="'. file_create_url($file->getFileUri()) .'">'. $file->getFileUri() .'</a>';
+        $form['source_fid_1']['#required'] = FALSE;
+      }
     }
 
     $form['actions']['#type'] = 'actions';
