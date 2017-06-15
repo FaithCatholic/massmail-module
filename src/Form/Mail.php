@@ -240,6 +240,7 @@ class Mail extends ConfigFormBase {
       unlink($logpath);
     }
     fopen($logpath, 'w') or die('Can not create logfile at: ' . $logpath);
+    chmod($logpath, 0777);
 
     // Start a detached background process.
     $path = DRUPAL_ROOT . '/' . drupal_get_path('module', 'massmail') . '/src/MassMailProcess.php';
@@ -263,6 +264,7 @@ class Mail extends ConfigFormBase {
       unlink($logpath);
     }
     fopen($logpath, 'w') or die('Can not create logfile at: ' . $logpath);
+    chmod($logpath, 0777);
 
     // Start a detached background process.
     $path = DRUPAL_ROOT . '/' . drupal_get_path('module', 'massmail') . '/src/MassMailProcess.php';
