@@ -23,6 +23,7 @@ if (file_exists($logpath)) {
   unlink($logpath);
 }
 $logfile = fopen($logpath, 'w') or die('Cannot create log at ' . $logpath);
+chmod($logpath, 0777);
 
 fwrite($logfile, "Initializing...\n");
 print "Initializing...\n";
