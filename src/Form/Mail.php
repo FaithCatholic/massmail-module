@@ -36,6 +36,8 @@ class Mail extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state, Request $request = NULL) {
+    $form_state->disableCache(); 
+
     $form = parent::buildForm($form, $form_state);
 
     $site = $this->config('system.site');
