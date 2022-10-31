@@ -50,7 +50,7 @@ class Mail extends ConfigFormBase {
       !$settings->get('aws_region') ||
       !$settings->get('data_dir'))
     {
-      drupal_set_message($this->t('You must first configure the general MassMail module settings to send email.'), 'warning');
+      \Drupal::messenger()->addWarning('You must first configure the general MassMail module settings to send email.');
       return new RedirectResponse('/admin/config/system/massmail');
     }
 
@@ -227,7 +227,7 @@ class Mail extends ConfigFormBase {
         ->save();
     }
 
-    drupal_set_message($this->t('Settings saved.'));
+    \Drupal::messenger()->addMessage('Settings saved.');
   }
 
   /**
@@ -247,7 +247,7 @@ class Mail extends ConfigFormBase {
     // Start a detached background process.
     $path = DRUPAL_ROOT . '/' . drupal_get_path('module', 'massmail') . '/src/MassMailProcess.php';
     exec("/usr/local/bin/php $path " . DRUPAL_ROOT . " test > /dev/null 2>/dev/null &");
-    drupal_set_message($this->t('Testing MassMail email queue.'));
+    \Drupal::messenger()->addMessage('Testing MassMail email queue.');
 
     // Redirect to status page.
     $url = \Drupal\Core\Url::fromRoute('massmail.status');
@@ -271,7 +271,7 @@ class Mail extends ConfigFormBase {
     // Start a detached background process.
     $path = DRUPAL_ROOT . '/' . drupal_get_path('module', 'massmail') . '/src/MassMailProcess.php';
     exec("/usr/local/bin/php $path " . DRUPAL_ROOT . " live > /dev/null 2>/dev/null &");
-    drupal_set_message($this->t('Sending MassMail email queue.'));
+    \Drupal::messenger()->addMessage('Sending MassMail email queue.');
 
     // Redirect to status page.
     $url = \Drupal\Core\Url::fromRoute('massmail.status');
