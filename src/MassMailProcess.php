@@ -217,8 +217,6 @@ foreach($records as $record) {
 
   // Suffix (html)
   $build['html'] .= '</tbody></table>';
-  $build['html'] .= '<br><br>';
-  $build['html'] .= 'Please correct any inaccuracies at http://www.updateparishdata.org/UpdateChurchInfo.aspx?churchid=' . $record['id'];
 
   // Footer (html)
   $build['html'] .= '<br><br><br>';
