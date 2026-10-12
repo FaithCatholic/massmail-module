@@ -1,32 +1,15 @@
 <?php
 
-use Aws\Ses\SesClient;
-use Drupal\file\Entity\File;
-
 /**
- * Stream URI of the data directory. Always private: the source data and
- * log contain contact details.
- * @return string
+ * @file
+ * MassMail hooks.
  */
-function massmail_data_uri() {
-  return 'private://' . \Drupal::config('massmail.settings')->get('data_dir');
-}
-
-/**
- * Full system path to data directory.
- * @return string
- */
-function massmail_data_dir() {
-  $uploads_dir = \Drupal::service('file_system')->realpath('private://');
-  $data_dir = \Drupal::config('massmail.settings')->get('data_dir');
-  return $uploads_dir . '/' . $data_dir;
-}
 
 /**
  * Implements hook_file_download().
  */
 function massmail_file_download($uri) {
-  if (!str_starts_with($uri, massmail_data_uri() . '/')) {
+  if (!str_starts_with($uri, \Drupal::service('massmail.manager')->dataUri() . '/')) {
     return NULL;
   }
   if (!\Drupal::currentUser()->hasPermission('access massmail mail form')) {
@@ -37,93 +20,4 @@ function massmail_file_download($uri) {
     'Content-Type' => $mime ?: 'application/octet-stream',
     'Content-Disposition' => 'attachment; filename="' . basename($uri) . '"',
   ];
-}
-
-/**
- * Full system path to a file using its fid.
- * @param  integer $fid
- * @return string
- */
-function massmail_path_by_fid($fid) {
-  $file = File::load($fid);
-  $filepath = massmail_data_dir() . '/' . $file->getFilename();
-  return $filepath;
-}
-
-/**
- * Check last line of logfile to see if completed.
- * @return boolean
- */
-function massmail_send_is_complete() {
-  $logpath = massmail_data_dir() . '/massmail.log';
-
-  if (file_exists($logpath)) {
-    $line = `tail -n 1 $logpath`;
-
-    if ($line === 'Complete.') {
-      return TRUE;
-    }
-  }
-
-  return FALSE;
-}
-
-/**
- * AWS credentials from the environment.
- *
- * Set MASSMAIL_AWS_ACCESS_KEY_ID and MASSMAIL_AWS_SECRET_ACCESS_KEY as
- * (sensitive) environment variables, e.g. Upsun env: variables.
- * @return array
- */
-function massmail_aws_credentials() {
-  return [
-    'key' => (string) getenv('MASSMAIL_AWS_ACCESS_KEY_ID'),
-    'secret' => (string) getenv('MASSMAIL_AWS_SECRET_ACCESS_KEY'),
-  ];
-}
-
-/**
- * Return an authorized Amazon SES client.
- * @return SesClient
- */
-function massmail_ses_client() {
-  return new SesClient([
-    'version' => '2010-12-01',
-    'region'  => \Drupal::config('massmail.settings')->get('aws_region'),
-    'credentials' => massmail_aws_credentials(),
-  ]);
-}
-
-/**
- * Return source data csv file.
- * @param  string $filepath
- * @param  string $sheetname
- * @return array
- */
-function massmail_source_data($filepath, $sheetname) {
-  $data = [];
-
-  if ($file = file($filepath)) {
-
-    foreach ($file as $line) {
-      $data[] = str_getcsv($line);
-    }
-
-    if (count($data)) {
-      $headings = array_shift($data);
-
-      // Column names as array keys. Skip rows whose column count doesn't
-      // match the headings (e.g. blank lines); array_combine() throws a
-      // ValueError on these in PHP 8.
-      $data = array_filter($data, function ($row) use ($headings) {
-        return count($row) === count($headings);
-      });
-      array_walk($data, function (&$row) use ($headings) {
-        $row = array_combine($headings, $row);
-      });
-    }
-
-  }
-
-  return $data;
 }

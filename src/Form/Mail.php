@@ -2,18 +2,41 @@
 
 namespace Drupal\massmail\Form;
 
-use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\file\Entity\File;
+use Drupal\Core\Url;
+use Drupal\massmail\MassMail;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\RedirectResponse;
 
 /**
  * Provides the send mail form.
  */
 class Mail extends ConfigFormBase {
+
+  /**
+   * The MassMail service.
+   *
+   * @var \Drupal\massmail\MassMail
+   */
+  protected MassMail $massMail;
+
+  /**
+   * The entity type manager.
+   *
+   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
+   */
+  protected EntityTypeManagerInterface $entityTypeManager;
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    $instance = parent::create($container);
+    $instance->massMail = $container->get('massmail.manager');
+    $instance->entityTypeManager = $container->get('entity_type.manager');
+    return $instance;
+  }
 
   /**
    * {@inheritdoc}
@@ -34,157 +57,130 @@ class Mail extends ConfigFormBase {
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state, ?Request $request = NULL) {
-    $form_state->disableCache(); 
+  public function buildForm(array $form, FormStateInterface $form_state) {
+    // Point to the module config if not set.
+    if (!$this->massMail->isConfigured()) {
+      $form['not_configured'] = [
+        '#markup' => '<p>' . $this->t('You must first <a href=":url">configure the MassMail settings</a> (AWS environment variables, region, data directory and the private file system) to send email.', [
+          ':url' => Url::fromRoute('massmail.settings')->toString(),
+        ]) . '</p>',
+      ];
+      return $form;
+    }
 
+    $form_state->disableCache();
     $form = parent::buildForm($form, $form_state);
 
     $site = $this->config('system.site');
-    $settings = $this->config('massmail.settings');
-    $credentials = massmail_aws_credentials();
-
-    // Redirect to module config if not set.
-    if (
-      !\Drupal::service('stream_wrapper_manager')->isValidScheme('private') ||
-      !$credentials['key'] ||
-      !$credentials['secret'] ||
-      !$settings->get('aws_region') ||
-      !$settings->get('data_dir'))
-    {
-      \Drupal::messenger()->addWarning('You must first configure the general MassMail module settings (and the private file system) to send email.');
-      return new RedirectResponse('/admin/config/system/massmail');
-    }
-
     $config = $this->config('massmail.mail');
+    $tokens = $this->t('Tokens from "church" are available, e.g. [[column_name]]');
 
-    $form['to'] = array(
-      '#default_value' => $config->get('to') ? $config->get('to') : '',
-      '#description' => t('A valid email or identical token. Tokens from "church" are available, e.g. [[column_name]]'),
-      '#placeholder' => t('recipient@email.com'),
+    $form['to'] = [
+      '#default_value' => $config->get('to') ?: '',
+      '#description' => $this->t('A valid email or identical token.') . ' ' . $tokens,
+      '#placeholder' => 'recipient@email.com',
       '#type' => 'textfield',
-      '#title' => t('To address'),
+      '#title' => $this->t('To address'),
       '#required' => TRUE,
-    );
+    ];
 
-    $form['from'] = array(
-      '#default_value' => $config->get('from') ? $config->get('from') : $site->get('mail'),
-      '#description' => t('A valid email or identical token. Also receives tests. Tokens from "church" are available, e.g. [[column_name]]'),
-      '#placeholder' => t('sender@email.com'),
+    $form['from'] = [
+      '#default_value' => $config->get('from') ?: $site->get('mail'),
+      '#description' => $this->t('A valid email or identical token. Also receives tests.') . ' ' . $tokens,
+      '#placeholder' => 'sender@email.com',
       '#type' => 'textfield',
-      '#title' => t('From address'),
+      '#title' => $this->t('From address'),
       '#required' => TRUE,
-    );
+    ];
 
-    $form['addresses'] = array(
-      '#title' => t('Notification addresses'),
-      '#markup' => '<p><em>' . t('For return email notifications. (Empty fields in this section will use the "from address" by default.)') . '</em></p>',
-      '#type' => 'fieldset',
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-    );
+    $form['addresses'] = [
+      '#title' => $this->t('Notification addresses'),
+      '#description' => $this->t('For return email notifications. Empty fields in this section use the From address. The bounce address must be verified in SES.'),
+      '#type' => 'details',
+      '#open' => FALSE,
+    ];
 
-    $form['addresses']['reply'] = array(
-      '#default_value' => $config->get('reply') ? $config->get('reply') : '',
-      '#description' => t('A valid email or identical token. Tokens from "church" are available, e.g. [[column_name]]'),
-      '#placeholder' => t('reply@email.com'),
+    $form['addresses']['reply'] = [
+      '#default_value' => $config->get('reply') ?: '',
+      '#description' => $this->t('A valid email or identical token.') . ' ' . $tokens,
+      '#placeholder' => 'reply@email.com',
       '#type' => 'textfield',
-      '#title' => t('Reply address'),
-      '#required' => FALSE,
-    );
+      '#title' => $this->t('Reply address'),
+    ];
 
-    $form['addresses']['bounce'] = array(
-      '#default_value' => $config->get('bounce') ? $config->get('bounce') : '',
-      '#description' => t('A valid email or identical token. Tokens from "church" are available, e.g. [[column_name]]'),
-      '#placeholder' => t('bounce@email.com'),
+    $form['addresses']['bounce'] = [
+      '#default_value' => $config->get('bounce') ?: '',
+      '#description' => $this->t('A valid email or identical token.') . ' ' . $tokens,
+      '#placeholder' => 'bounce@email.com',
       '#type' => 'textfield',
-      '#title' => t('Bounce address'),
-      '#required' => FALSE,
-    );
+      '#title' => $this->t('Bounce address'),
+    ];
 
-    $form['addresses']['suppressionlist'] = array(
-      '#default_value' => $config->get('suppressionlist') ? $config->get('suppressionlist') : '',
-      '#description' => t('A valid email or identical token. Tokens from "church" are available, e.g. [[column_name]]'),
-      '#placeholder' => t('unsubscribe@email.com'),
+    $form['addresses']['suppressionlist'] = [
+      '#default_value' => $config->get('suppressionlist') ?: '',
+      '#description' => $this->t('A valid email or identical token.') . ' ' . $tokens,
+      '#placeholder' => 'unsubscribe@email.com',
       '#type' => 'textfield',
-      '#title' => t('Unsubscribe address'),
-      '#required' => FALSE,
-    );
+      '#title' => $this->t('Unsubscribe address'),
+    ];
 
-    $form['subject'] = array(
-      '#default_value' => $config->get('subject') ? $config->get('subject') : '',
-      '#description' => t('Tokens from "church" are available, e.g. [[column_name]]'),
-      '#placeholder' => t('Regarding Your MassTimes Account'),
+    $form['subject'] = [
+      '#default_value' => $config->get('subject') ?: '',
+      '#description' => $tokens,
+      '#placeholder' => $this->t('Regarding Your MassTimes Account'),
       '#type' => 'textfield',
-      '#title' => t('Subject'),
+      '#title' => $this->t('Subject'),
       '#required' => TRUE,
-    );
+    ];
 
-    $form['body'] = array(
-      '#default_value' => $config->get('body') ? $config->get('body') : '',
-      '#description' => t('Service data will be auto-added below the body intro. Tokens from "church" are available, e.g. [[column_name]]'),
-      '#placeholder' => t('Greetings! This is a friendly message from MassTimes regarding your account information...'),
+    $form['body'] = [
+      '#default_value' => $config->get('body') ?: '',
+      '#description' => $this->t('Service data will be auto-added below the body intro.') . ' ' . $tokens,
+      '#placeholder' => $this->t('Greetings! This is a friendly message from MassTimes regarding your account information...'),
       '#type' => 'textarea',
-      '#title' => t('Body intro'),
+      '#title' => $this->t('Body intro'),
       '#required' => TRUE,
-    );
+    ];
 
-    $form['source_fid_0'] = array(
-      '#title' => t('Church data (csv)'),
-      '#type' => 'managed_file',
-      '#upload_location' => massmail_data_uri(),
-      '#upload_validators' => [
-        'FileExtension' => ['extensions' => 'csv'],
-      ],
-      '#required' => TRUE,
-      '#weight' => 1,
-    );
-
-    if ($fid = $config->get('source_fid_0')) {
-      $file = File::load($fid);
-      if ($file) {
-        $form['source_fid_0']['#description'] = t('Uploaded data file:') . ' <a href="'. \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri()) .'">'. $file->getFileUri() .'</a>';
-        $form['source_fid_0']['#required'] = FALSE;
-      }
-    }
-
-    $form['source_fid_1'] = array(
-      '#title' => t('Services data (csv)'),
-      '#type' => 'managed_file',
-      '#upload_location' => massmail_data_uri(),
-      '#upload_validators' => [
-        'FileExtension' => ['extensions' => 'csv'],
-      ],
-      '#required' => TRUE,
-      '#weight' => 2,
-    );
-
-    if ($fid = $config->get('source_fid_1')) {
-      $file = File::load($fid);
-      if ($file) {
-        $form['source_fid_1']['#description'] = t('Uploaded data file:') . ' <a href="'. \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri()) .'">'. $file->getFileUri() .'</a>';
-        $form['source_fid_1']['#required'] = FALSE;
-      }
+    $sources = [
+      'source_fid_0' => $this->t('Church data (csv)'),
+      'source_fid_1' => $this->t('Services data (csv)'),
+    ];
+    $weight = 1;
+    foreach ($sources as $key => $title) {
+      $fid = $config->get($key);
+      $form[$key] = [
+        '#title' => $title,
+        '#type' => 'managed_file',
+        '#upload_location' => $this->massMail->dataUri(),
+        '#upload_validators' => [
+          'FileExtension' => ['extensions' => 'csv'],
+        ],
+        '#default_value' => $fid ? [$fid] : NULL,
+        '#required' => TRUE,
+        '#weight' => $weight++,
+      ];
     }
 
     $form['actions']['#type'] = 'actions';
 
-    $form['actions']['save'] = array(
+    $form['actions']['save'] = [
       '#type' => 'submit',
-      '#value' => 'Save',
+      '#value' => $this->t('Save'),
       '#submit' => ['::saveSubmit'],
       '#weight' => 10,
-    );
+    ];
 
-    $form['actions']['send_test'] = array(
-      '#attributes' => array(
+    $form['actions']['send_test'] = [
+      '#attributes' => [
         'class' => ['btn-warning'],
-        'onClick' => 'alert(\'Are you sure you want to test?\'); jQuery(this).addClass(\'disabled\');',
-      ),
+        'onclick' => $this->confirmScript($this->t('Send the first and last emails to the From address as a test?')),
+      ],
       '#type' => 'submit',
-      '#value' => 'Save & Test',
+      '#value' => $this->t('Save & Test'),
       '#submit' => ['::testSubmit'],
       '#weight' => 11,
-    );
+    ];
 
     $form['actions']['submit'] = [
       '#type' => 'submit',
@@ -192,12 +188,19 @@ class Mail extends ConfigFormBase {
       '#button_type' => 'primary',
       '#attributes' => [
         'class' => ['btn-danger'],
-        'onClick' => 'alert(\'CONFIRM LIVE SENDING: Are you sure you want to do this?\'); jQuery(this).addClass(\'disabled\');',
+        'onclick' => $this->confirmScript($this->t('CONFIRM LIVE SENDING: this emails every church in the data file. Are you sure?')),
       ],
       '#weight' => 12,
     ];
 
     return $form;
+  }
+
+  /**
+   * Inline click handler: cancels the submit unless confirmed.
+   */
+  protected function confirmScript(string $message): string {
+    return 'if (!window.confirm(' . json_encode($message, JSON_HEX_APOS | JSON_HEX_QUOT) . ')) { return false; } this.classList.add("disabled");';
   }
 
   public function saveSubmit(array &$form, FormStateInterface $form_state) {
@@ -211,58 +214,33 @@ class Mail extends ConfigFormBase {
       ->set('bounce', $values['bounce'])
       ->set('suppressionlist', $values['suppressionlist'])
       ->set('subject', $values['subject'])
-      ->set('body', $values['body'])
-      ->save();
+      ->set('body', $values['body']);
 
-    if (count($values['source_fid_0'])) {
-      $fid = $values['source_fid_0'][0];
-      // Keep the upload; temporary files are removed by cron.
-      if ($file = File::load($fid)) {
-        $file->setPermanent();
-        $file->save();
+    $storage = $this->entityTypeManager->getStorage('file');
+    foreach (['source_fid_0', 'source_fid_1'] as $key) {
+      if (!empty($values[$key][0])) {
+        $fid = $values[$key][0];
+        // Keep the upload; temporary files are removed by cron.
+        if ($file = $storage->load($fid)) {
+          $file->setPermanent();
+          $file->save();
+        }
+        $config->set($key, $fid);
       }
-      $config
-        ->set('source_fid_0', $fid)
-        ->save();
     }
 
-    if (count($values['source_fid_1'])) {
-      $fid = $values['source_fid_1'][0];
-      // Keep the upload; temporary files are removed by cron.
-      if ($file = File::load($fid)) {
-        $file->setPermanent();
-        $file->save();
-      }
-      $config
-        ->set('source_fid_1', $fid)
-        ->save();
-    }
-
-    \Drupal::messenger()->addMessage('Settings saved.');
+    $config->save();
+    $this->messenger()->addMessage($this->t('Settings saved.'));
   }
 
   /**
-   * {@inheritdoc}
+   * Saves, then sends the test emails.
    */
   public function testSubmit(array &$form, FormStateInterface $form_state) {
     $this->saveSubmit($form, $form_state);
-
-    // Delete logfile here to ensure the correct status page.
-    $logpath = massmail_data_dir() . '/massmail.log';
-    if (file_exists($logpath)) {
-      unlink($logpath);
-    }
-    fopen($logpath, 'w') or die('Can not create logfile at: ' . $logpath);
-    chmod($logpath, 0777);
-
-    // Start a detached background process.
-    $path = DRUPAL_ROOT . '/' . \Drupal::service('extension.list.module')->getPath('massmail') . '/src/MassMailProcess.php';
-    exec(PHP_BINDIR . "/php $path " . DRUPAL_ROOT . " test > /dev/null 2>/dev/null &");
-    \Drupal::messenger()->addMessage('Testing MassMail email queue.');
-
-    // Redirect to status page.
-    $url = \Drupal\Core\Url::fromRoute('massmail.status');
-    $form_state->setRedirectUrl($url);
+    $this->massMail->startSend('test');
+    $this->messenger()->addMessage($this->t('Testing MassMail email queue.'));
+    $form_state->setRedirect('massmail.status');
   }
 
   /**
@@ -270,23 +248,9 @@ class Mail extends ConfigFormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $this->saveSubmit($form, $form_state);
-
-    // Delete logfile here to ensure the correct status page.
-    $logpath = massmail_data_dir() . '/massmail.log';
-    if (file_exists($logpath)) {
-      unlink($logpath);
-    }
-    fopen($logpath, 'w') or die('Can not create logfile at: ' . $logpath);
-    chmod($logpath, 0777);
-
-    // Start a detached background process.
-    $path = DRUPAL_ROOT . '/' . \Drupal::service('extension.list.module')->getPath('massmail') . '/src/MassMailProcess.php';
-    exec(PHP_BINDIR . "/php $path " . DRUPAL_ROOT . " live > /dev/null 2>/dev/null &");
-    \Drupal::messenger()->addMessage('Sending MassMail email queue.');
-
-    // Redirect to status page.
-    $url = \Drupal\Core\Url::fromRoute('massmail.status');
-    $form_state->setRedirectUrl($url);
+    $this->massMail->startSend('live');
+    $this->messenger()->addMessage($this->t('Sending MassMail email queue.'));
+    $form_state->setRedirect('massmail.status');
   }
 
 }

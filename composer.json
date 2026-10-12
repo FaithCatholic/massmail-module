@@ -1,16 +1,20 @@
 {
-  "name": "drupal/massmail",
+  "name": "faithcatholic/massmail",
   "type": "drupal-module",
-  "description": "Imports, parses, and sends mass mails from a custom CSV source.",
-  "keywords": ["Drupal"],
-  "license": "GPL-2.0+",
-  "homepage": "https://www.drupal.org/project/massmail",
-  "minimum-stability": "dev",
+  "description": "Imports, parses, and sends mass mails from a custom CSV source via Amazon SES.",
+  "keywords": [
+    "Drupal"
+  ],
+  "license": "GPL-2.0-or-later",
+  "homepage": "https://github.com/FaithCatholic/massmail-module",
   "support": {
-    "issues": "https://www.drupal.org/project/issues/massmail",
-    "source": "http://cgit.drupalcode.org/massmail"
+    "issues": "https://github.com/FaithCatholic/massmail-module/issues",
+    "source": "https://github.com/FaithCatholic/massmail-module"
   },
   "require": {
-    "aws/aws-sdk-php": "^3.300"
+    "php": ">=8.1",
+    "drupal/core": "^10.3 || ^11",
+    "aws/aws-sdk-php": "^3.300",
+    "drush/drush": "^12.5 || ^13"
   }
 }

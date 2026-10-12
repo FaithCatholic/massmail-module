@@ -14,11 +14,11 @@ massmail.mail:
   label: 'MassMail mail'
   mapping:
     to:
-      type: email
-      label: 'Recipient address of the email'
+      type: string
+      label: 'Recipient address of the email (email or token)'
     from:
-      type: email
-      label: 'Sender address of the email'
+      type: string
+      label: 'Sender address of the email (email or token)'
     subject:
       type: string
       label: 'Subject of email'

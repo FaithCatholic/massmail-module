@@ -1,0 +1,4 @@
+services:
+  massmail.manager:
+    class: Drupal\massmail\MassMail
+    arguments: ['@config.factory', '@file_system', '@entity_type.manager', '%app.root%']
