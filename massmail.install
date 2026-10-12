@@ -1,0 +1,57 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the MassMail module.
+ */
+
+/**
+ * Remove AWS keys from config; they now come from environment variables.
+ */
+function massmail_update_10001() {
+  \Drupal::configFactory()->getEditable('massmail.settings')
+    ->clear('aws_access')
+    ->clear('aws_secret')
+    ->save();
+}
+
+/**
+ * Move source data files to the private file system.
+ */
+function massmail_update_10002() {
+  $data_dir = \Drupal::config('massmail.settings')->get('data_dir');
+  if (!$data_dir) {
+    return t('No data directory configured; nothing to move.');
+  }
+
+  $destination = 'private://' . $data_dir;
+  /** @var \Drupal\Core\File\FileSystemInterface $file_system */
+  $file_system = \Drupal::service('file_system');
+  $file_system->prepareDirectory($destination, \Drupal\Core\File\FileSystemInterface::CREATE_DIRECTORY | \Drupal\Core\File\FileSystemInterface::MODIFY_PERMISSIONS);
+
+  $moved = [];
+  $mail = \Drupal::config('massmail.mail');
+  foreach (['source_fid_0', 'source_fid_1'] as $key) {
+    $file = ($fid = $mail->get($key)) ? \Drupal\file\Entity\File::load($fid) : NULL;
+    if ($file && !str_starts_with($file->getFileUri(), 'private://') && file_exists($file->getFileUri())) {
+      $file = \Drupal::service('file.repository')->move($file, $destination . '/' . $file->getFilename(), \Drupal\Core\File\FileExists::Replace);
+      $file->setPermanent();
+      $file->save();
+      $moved[] = $file->getFilename();
+    }
+  }
+
+  // The old log is recreated on the next send.
+  $old_log = 'public://' . $data_dir . '/massmail.log';
+  if (file_exists($old_log)) {
+    $file_system->delete($old_log);
+  }
+
+  $left = glob($file_system->realpath('public://' . $data_dir) . '/*') ?: [];
+  return t('Moved to @dest: @moved. Files still in public://@dir: @left.', [
+    '@dest' => $destination,
+    '@moved' => $moved ? implode(', ', $moved) : 'none',
+    '@dir' => $data_dir,
+    '@left' => count($left),
+  ]);
+}

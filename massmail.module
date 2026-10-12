@@ -4,14 +4,39 @@ use Aws\Ses\SesClient;
 use Drupal\file\Entity\File;
 
 /**
+ * Stream URI of the data directory. Always private: the source data and
+ * log contain contact details.
+ * @return string
+ */
+function massmail_data_uri() {
+  return 'private://' . \Drupal::config('massmail.settings')->get('data_dir');
+}
+
+/**
  * Full system path to data directory.
  * @return string
  */
 function massmail_data_dir() {
-  $scheme = \Drupal::config('system.file')->get('default_scheme');
-  $uploads_dir = \Drupal::service('file_system')->realpath($scheme . '://');
+  $uploads_dir = \Drupal::service('file_system')->realpath('private://');
   $data_dir = \Drupal::config('massmail.settings')->get('data_dir');
   return $uploads_dir . '/' . $data_dir;
+}
+
+/**
+ * Implements hook_file_download().
+ */
+function massmail_file_download($uri) {
+  if (!str_starts_with($uri, massmail_data_uri() . '/')) {
+    return NULL;
+  }
+  if (!\Drupal::currentUser()->hasPermission('access massmail mail form')) {
+    return -1;
+  }
+  $mime = \Drupal::service('file.mime_type.guesser')->guessMimeType($uri);
+  return [
+    'Content-Type' => $mime ?: 'application/octet-stream',
+    'Content-Disposition' => 'attachment; filename="' . basename($uri) . '"',
+  ];
 }
 
 /**
@@ -44,6 +69,20 @@ function massmail_send_is_complete() {
 }
 
 /**
+ * AWS credentials from the environment.
+ *
+ * Set MASSMAIL_AWS_ACCESS_KEY_ID and MASSMAIL_AWS_SECRET_ACCESS_KEY as
+ * (sensitive) environment variables, e.g. Upsun env: variables.
+ * @return array
+ */
+function massmail_aws_credentials() {
+  return [
+    'key' => (string) getenv('MASSMAIL_AWS_ACCESS_KEY_ID'),
+    'secret' => (string) getenv('MASSMAIL_AWS_SECRET_ACCESS_KEY'),
+  ];
+}
+
+/**
  * Return an authorized Amazon SES client.
  * @return SesClient
  */
@@ -51,10 +90,7 @@ function massmail_ses_client() {
   return new SesClient([
     'version' => '2010-12-01',
     'region'  => \Drupal::config('massmail.settings')->get('aws_region'),
-    'credentials' => [
-      'key' => \Drupal::config('massmail.settings')->get('aws_access'),
-      'secret' => \Drupal::config('massmail.settings')->get('aws_secret'),
-    ],
+    'credentials' => massmail_aws_credentials(),
   ]);
 }
 

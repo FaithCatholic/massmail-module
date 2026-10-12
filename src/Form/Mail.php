@@ -41,15 +41,17 @@ class Mail extends ConfigFormBase {
 
     $site = $this->config('system.site');
     $settings = $this->config('massmail.settings');
+    $credentials = massmail_aws_credentials();
 
     // Redirect to module config if not set.
     if (
-      !$settings->get('aws_access') ||
-      !$settings->get('aws_secret') ||
+      !\Drupal::service('stream_wrapper_manager')->isValidScheme('private') ||
+      !$credentials['key'] ||
+      !$credentials['secret'] ||
       !$settings->get('aws_region') ||
       !$settings->get('data_dir'))
     {
-      \Drupal::messenger()->addWarning('You must first configure the general MassMail module settings to send email.');
+      \Drupal::messenger()->addWarning('You must first configure the general MassMail module settings (and the private file system) to send email.');
       return new RedirectResponse('/admin/config/system/massmail');
     }
 
@@ -129,7 +131,7 @@ class Mail extends ConfigFormBase {
     $form['source_fid_0'] = array(
       '#title' => t('Church data (csv)'),
       '#type' => 'managed_file',
-      '#upload_location' => \Drupal::config('system.file')->get('default_scheme') . '://' . $settings->get('data_dir'),
+      '#upload_location' => massmail_data_uri(),
       '#upload_validators' => [
         'FileExtension' => ['extensions' => 'csv'],
       ],
@@ -148,7 +150,7 @@ class Mail extends ConfigFormBase {
     $form['source_fid_1'] = array(
       '#title' => t('Services data (csv)'),
       '#type' => 'managed_file',
-      '#upload_location' => \Drupal::config('system.file')->get('default_scheme') . '://' . $settings->get('data_dir'),
+      '#upload_location' => massmail_data_uri(),
       '#upload_validators' => [
         'FileExtension' => ['extensions' => 'csv'],
       ],
@@ -214,6 +216,11 @@ class Mail extends ConfigFormBase {
 
     if (count($values['source_fid_0'])) {
       $fid = $values['source_fid_0'][0];
+      // Keep the upload; temporary files are removed by cron.
+      if ($file = File::load($fid)) {
+        $file->setPermanent();
+        $file->save();
+      }
       $config
         ->set('source_fid_0', $fid)
         ->save();
@@ -221,6 +228,11 @@ class Mail extends ConfigFormBase {
 
     if (count($values['source_fid_1'])) {
       $fid = $values['source_fid_1'][0];
+      // Keep the upload; temporary files are removed by cron.
+      if ($file = File::load($fid)) {
+        $file->setPermanent();
+        $file->save();
+      }
       $config
         ->set('source_fid_1', $fid)
         ->save();

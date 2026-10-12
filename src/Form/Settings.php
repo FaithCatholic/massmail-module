@@ -39,18 +39,21 @@ class Settings extends ConfigFormBase {
       '#type' => 'fieldset',
     );
 
+    // Keys come from the environment, never from config.
+    $credentials = massmail_aws_credentials();
+
     $form['aws']['aws_access'] = array(
-      '#default_value' => $config->get('aws_access') ? $config->get('aws_access') : '',
-      '#required' => TRUE,
+      '#markup' => $credentials['key'] ? t('Set') : '<strong>' . t('Not set') . '</strong>',
       '#title' => 'Access key',
-      '#type' => 'textfield',
+      '#type' => 'item',
+      '#description' => t('From the MASSMAIL_AWS_ACCESS_KEY_ID environment variable.'),
     );
 
     $form['aws']['aws_secret'] = array(
-      '#default_value' => $config->get('aws_secret') ? $config->get('aws_secret') : '',
-      '#required' => TRUE,
+      '#markup' => $credentials['secret'] ? t('Set') : '<strong>' . t('Not set') . '</strong>',
       '#title' => 'Secret key',
-      '#type' => 'textfield',
+      '#type' => 'item',
+      '#description' => t('From the MASSMAIL_AWS_SECRET_ACCESS_KEY environment variable.'),
     );
 
     $form['aws']['aws_region'] = array(
@@ -73,7 +76,7 @@ class Settings extends ConfigFormBase {
 
     $form['data']['data_dir'] = array(
       '#default_value' => $config->get('data_dir') ? $config->get('data_dir') : '',
-      '#description' => t('A path relative to the file upload directory. (No leading or trailing slashes.)'),
+      '#description' => t('A path relative to the private file directory. (No leading or trailing slashes.)'),
       '#required' => TRUE,
       '#title' => 'Data directory',
       '#type' => 'textfield',
@@ -89,8 +92,6 @@ class Settings extends ConfigFormBase {
     $values = $form_state->getValues();
 
     $this->config('massmail.settings')
-      ->set('aws_access', $values['aws_access'])
-      ->set('aws_secret', $values['aws_secret'])
       ->set('aws_region', $values['aws_region'])
       ->set('data_dir', $values['data_dir'])
       ->save();
