@@ -6,7 +6,6 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\file\Entity\File;
-use PHPExcel_IOFactory as PHPExcel;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -141,7 +140,7 @@ class Mail extends ConfigFormBase {
     if ($fid = $config->get('source_fid_0')) {
       $file = File::load($fid);
       if ($file) {
-        $form['source_fid_0']['#description'] = t('Uploaded data file:') . ' <a href="'. file_create_url($file->getFileUri()) .'">'. $file->getFileUri() .'</a>';
+        $form['source_fid_0']['#description'] = t('Uploaded data file:') . ' <a href="'. \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri()) .'">'. $file->getFileUri() .'</a>';
         $form['source_fid_0']['#required'] = FALSE;
       }
     }
@@ -160,7 +159,7 @@ class Mail extends ConfigFormBase {
     if ($fid = $config->get('source_fid_1')) {
       $file = File::load($fid);
       if ($file) {
-        $form['source_fid_1']['#description'] = t('Uploaded data file:') . ' <a href="'. file_create_url($file->getFileUri()) .'">'. $file->getFileUri() .'</a>';
+        $form['source_fid_1']['#description'] = t('Uploaded data file:') . ' <a href="'. \Drupal::service('file_url_generator')->generateAbsoluteString($file->getFileUri()) .'">'. $file->getFileUri() .'</a>';
         $form['source_fid_1']['#required'] = FALSE;
       }
     }
@@ -245,7 +244,7 @@ class Mail extends ConfigFormBase {
     chmod($logpath, 0777);
 
     // Start a detached background process.
-    $path = DRUPAL_ROOT . '/' . drupal_get_path('module', 'massmail') . '/src/MassMailProcess.php';
+    $path = DRUPAL_ROOT . '/' . \Drupal::service('extension.list.module')->getPath('massmail') . '/src/MassMailProcess.php';
     exec("/usr/local/bin/php $path " . DRUPAL_ROOT . " test > /dev/null 2>/dev/null &");
     \Drupal::messenger()->addMessage('Testing MassMail email queue.');
 
@@ -269,7 +268,7 @@ class Mail extends ConfigFormBase {
     chmod($logpath, 0777);
 
     // Start a detached background process.
-    $path = DRUPAL_ROOT . '/' . drupal_get_path('module', 'massmail') . '/src/MassMailProcess.php';
+    $path = DRUPAL_ROOT . '/' . \Drupal::service('extension.list.module')->getPath('massmail') . '/src/MassMailProcess.php';
     exec("/usr/local/bin/php $path " . DRUPAL_ROOT . " live > /dev/null 2>/dev/null &");
     \Drupal::messenger()->addMessage('Sending MassMail email queue.');
 
