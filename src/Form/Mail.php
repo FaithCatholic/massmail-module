@@ -34,7 +34,7 @@ class Mail extends ConfigFormBase {
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state, Request $request = NULL) {
+  public function buildForm(array $form, FormStateInterface $form_state, ?Request $request = NULL) {
     $form_state->disableCache(); 
 
     $form = parent::buildForm($form, $form_state);
@@ -130,9 +130,9 @@ class Mail extends ConfigFormBase {
       '#title' => t('Church data (csv)'),
       '#type' => 'managed_file',
       '#upload_location' => \Drupal::config('system.file')->get('default_scheme') . '://' . $settings->get('data_dir'),
-      '#upload_validators' => array(
-        'file_validate_extensions' => array('csv'),
-      ),
+      '#upload_validators' => [
+        'FileExtension' => ['extensions' => 'csv'],
+      ],
       '#required' => TRUE,
       '#weight' => 1,
     );
@@ -149,9 +149,9 @@ class Mail extends ConfigFormBase {
       '#title' => t('Services data (csv)'),
       '#type' => 'managed_file',
       '#upload_location' => \Drupal::config('system.file')->get('default_scheme') . '://' . $settings->get('data_dir'),
-      '#upload_validators' => array(
-        'file_validate_extensions' => array('csv'),
-      ),
+      '#upload_validators' => [
+        'FileExtension' => ['extensions' => 'csv'],
+      ],
       '#required' => TRUE,
       '#weight' => 2,
     );
@@ -245,7 +245,7 @@ class Mail extends ConfigFormBase {
 
     // Start a detached background process.
     $path = DRUPAL_ROOT . '/' . \Drupal::service('extension.list.module')->getPath('massmail') . '/src/MassMailProcess.php';
-    exec("/usr/local/bin/php $path " . DRUPAL_ROOT . " test > /dev/null 2>/dev/null &");
+    exec(PHP_BINDIR . "/php $path " . DRUPAL_ROOT . " test > /dev/null 2>/dev/null &");
     \Drupal::messenger()->addMessage('Testing MassMail email queue.');
 
     // Redirect to status page.
@@ -269,7 +269,7 @@ class Mail extends ConfigFormBase {
 
     // Start a detached background process.
     $path = DRUPAL_ROOT . '/' . \Drupal::service('extension.list.module')->getPath('massmail') . '/src/MassMailProcess.php';
-    exec("/usr/local/bin/php $path " . DRUPAL_ROOT . " live > /dev/null 2>/dev/null &");
+    exec(PHP_BINDIR . "/php $path " . DRUPAL_ROOT . " live > /dev/null 2>/dev/null &");
     \Drupal::messenger()->addMessage('Sending MassMail email queue.');
 
     // Redirect to status page.

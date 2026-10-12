@@ -6,13 +6,12 @@ $drupal_root = $argv[1];
 $mode = $argv[2];
 
 // Drupal container
-require_once $drupal_root . '/core/includes/database.inc';
-require_once $drupal_root . '/core/includes/schema.inc';
+chdir($drupal_root);
 $autoloader = require_once $drupal_root . '/autoload.php';
 $request = \Symfony\Component\HttpFoundation\Request::createFromGlobals();
 $kernel = \Drupal\Core\DrupalKernel::createFromRequest($request, $autoloader, 'prod');
 $kernel->boot();
-$kernel->prepareLegacyRequest($request);
+$kernel->preHandle($request);
 
 // Load helper functions
 \Drupal::moduleHandler()->loadInclude('massmail', 'module');
@@ -282,7 +281,7 @@ fwrite($logfile, 'Preparing to send ' . count($requests) . " emails...\n");
 print 'Preparing to send ' . count($requests) . " emails...\n";
 
 $ses = massmail_ses_client();
-$rate = $ses->getSendQuota()->get('MaxSendRate');
+$rate = max(1, (int) $ses->getSendQuota()['MaxSendRate']);
 
 if ($mode === 'test' || $mode === '') {
 

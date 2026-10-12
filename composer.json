@@ -11,6 +11,6 @@
     "source": "http://cgit.drupalcode.org/massmail"
   },
   "require": {
-    "aws/aws-sdk-php": "~2.0"
+    "aws/aws-sdk-php": "^3.300"
   }
 }

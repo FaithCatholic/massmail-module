@@ -30,7 +30,7 @@ class Settings extends ConfigFormBase {
   /**
    * {@inheritdoc}
    */
-  public function buildForm(array $form, FormStateInterface $form_state, Request $request = NULL) {
+  public function buildForm(array $form, FormStateInterface $form_state, ?Request $request = NULL) {
     $form = parent::buildForm($form, $form_state);
     $config = $this->config('massmail.settings');
 

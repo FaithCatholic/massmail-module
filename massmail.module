@@ -48,10 +48,13 @@ function massmail_send_is_complete() {
  * @return SesClient
  */
 function massmail_ses_client() {
-  return SesClient::factory([
-    'key' => \Drupal::config('massmail.settings')->get('aws_access'),
-    'secret' => \Drupal::config('massmail.settings')->get('aws_secret'),
+  return new SesClient([
+    'version' => '2010-12-01',
     'region'  => \Drupal::config('massmail.settings')->get('aws_region'),
+    'credentials' => [
+      'key' => \Drupal::config('massmail.settings')->get('aws_access'),
+      'secret' => \Drupal::config('massmail.settings')->get('aws_secret'),
+    ],
   ]);
 }
 
@@ -62,6 +65,8 @@ function massmail_ses_client() {
  * @return array
  */
 function massmail_source_data($filepath, $sheetname) {
+  $data = [];
+
   if ($file = file($filepath)) {
 
     foreach ($file as $line) {
@@ -71,13 +76,18 @@ function massmail_source_data($filepath, $sheetname) {
     if (count($data)) {
       $headings = array_shift($data);
 
-      // Column names as array keys.
-      array_walk($data, function (&$row) use ($headings) {
-        $row = @array_combine($headings, $row);
+      // Column names as array keys. Skip rows whose column count doesn't
+      // match the headings (e.g. blank lines); array_combine() throws a
+      // ValueError on these in PHP 8.
+      $data = array_filter($data, function ($row) use ($headings) {
+        return count($row) === count($headings);
       });
-
-      return $data;
+      array_walk($data, function (&$row) use ($headings) {
+        $row = array_combine($headings, $row);
+      });
     }
 
   }
+
+  return $data;
 }
